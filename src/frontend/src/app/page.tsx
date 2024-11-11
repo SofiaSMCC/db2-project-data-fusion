@@ -9,7 +9,7 @@ import Notification from './components/Notification';
 
 export default function Home() {
   const [data, setData] = useState([]);
-  const [query, setQuery] = useState(``);
+  const [query, setQuery] = useState(`SELECT * from SongsLyrics WHERE lyric "Better than home" LIMIT 10`);
   const [time, setTime] = useState<number | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -22,12 +22,14 @@ export default function Home() {
     const startTime = performance.now();
 
     console.log("Executing Query: ", queryToExecute);
-    fetch('http://0.0.0.0:18080/query', {
+    fetch('http://0.0.0.0:8000/query', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: queryToExecute.replace(/"/g, "\""),
+      body: JSON.stringify({
+        "query": queryToExecute.replace(/"/g, "\"")
+      }),
     })
       .then((res) => res.json())
       .then((data) => {
