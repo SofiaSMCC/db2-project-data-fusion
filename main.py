@@ -29,12 +29,53 @@ def preProcesamiento(texto, stemming=False):
         words = [stemmer.stem(word) for word in words]
     return words
 
+# Función para calcular TF
+def calcular_tf(documento):
+    tf = defaultdict(int)
+    for palabra in documento:
+        tf[palabra] += 1
+    for palabra in tf:
+        tf[palabra] /= len(documento)  # Normalización por la longitud del documento
+    return tf
+
+# Función para calcular IDF
+def calcular_idf(dataset):
+    idf = defaultdict(float)
+    total_docs = len(dataset)
+    for doc_id, documento in dataset.items():
+        palabras_unicas = set(documento)
+        for palabra in palabras_unicas:
+            idf[palabra] += 1
+    for palabra in idf:
+        idf[palabra] = math.log(total_docs / idf[palabra])  # IDF = log(N / df)
+    return idf
+
+# Función para calcular el vector TF-IDF de un documento
+def calcular_tfidf(documento, idf):
+    tf = calcular_tf(documento)
+    tfidf = {palabra: tf[palabra] * idf[palabra] for palabra in documento if palabra in idf}
+    return tfidf
+
+# Función para calcular la similitud de coseno
+def similitud_coseno(vec1, vec2):
+    # Producto punto de vec1 y vec2
+    producto_punto = sum(vec1[palabra] * vec2.get(palabra, 0) for palabra in vec1)
+    
+    # Normas de los vectores
+    norma_vec1 = math.sqrt(sum(val ** 2 for val in vec1.values()))
+    norma_vec2 = math.sqrt(sum(val ** 2 for val in vec2.values()))
+    
+    # Similaridad de coseno
+    if norma_vec1 == 0 or norma_vec2 == 0:
+        return 0.0
+    else:
+        return producto_punto / (norma_vec1 * norma_vec2)
+
 # Implementación del algoritmo SPIMI con generación de bloques
 def spimi_construir_indice(dataset, bloque_tam=500, ruta="indice_invertido"):
     if not os.path.exists(ruta):
         os.makedirs(ruta)
 
-    N = len(dataset)  # Número total de documentos
     contador_bloque = 0  # Contador de bloques
     indice_invertido = defaultdict(dict)  # Diccionario temporal para el índice en memoria
 
@@ -65,7 +106,7 @@ def spimi_construir_indice(dataset, bloque_tam=500, ruta="indice_invertido"):
 def guardar_bloque(bloque_indice, ruta, contador_bloque):
     sorted_terms = sorted(bloque_indice.keys())
     sorted_indice = {term: bloque_indice[term] for term in sorted_terms}
-    with open(f"{ruta}/bloque_{contador_bloque}.bin", "wb") as f:  # "wb" para modo binario
+    with open(f"{ruta}/bloque_{contador_bloque}.bin", "wb") as f:
         f.write(orjson.dumps(sorted_indice))
 
 # Función para mezclar bloques utilizando BSBI en formato binario
@@ -106,26 +147,38 @@ def mezclar_bloques_bsbi(ruta, num_bloques):
     for archivo in archivos:
         archivo.close()
 
-# Función para realizar la consulta optimizada sobre el índice invertido en bloques
-def buscar_letra(query, ruta="indice_invertido", top_k=5):
+# Función para realizar la consulta optimizada usando similitud de coseno
+def buscar_letra(query, dataset, idf, df, ruta="indice_invertido", top_k=5):
     query_words = preProcesamiento(query)
-    resultados = defaultdict(float)
+    query_tfidf = calcular_tfidf(query_words, idf)
 
     # Cargar el índice final en binario
     with open(os.path.join(ruta, "indice_final.bin"), "rb") as f:
         indice_final = orjson.loads(f.read())  # Lee en binario
-        for palabra in query_words:
-            if palabra in indice_final:
-                for doc_id, freq in indice_final[palabra].items():
-                    resultados[doc_id] += freq
 
-    return sorted(resultados.items(), key=lambda x: x[1], reverse=True)[:top_k]
+    # Calcular la similitud de coseno entre la consulta y cada documento
+    similitudes = []
+    for doc_id, palabras in dataset.items():
+        doc_tfidf = calcular_tfidf(palabras, idf)
+        similitud = similitud_coseno(query_tfidf, doc_tfidf)
+        similitudes.append((doc_id, similitud))
+
+    # Ordenar los documentos por similitud y devolver los top_k
+    resultados_ordenados = sorted(similitudes, key=lambda x: x[1], reverse=True)[:top_k]
+    
+    # Imprimir resultados de la consulta
+    for doc_id, score in resultados_ordenados:
+        song_info = df[df['song_id'] == doc_id][['song', 'artists']].values[0]
+        print(f"{song_info[0]} por {song_info[1]} - Similitud de Coseno: {score:.4f}")
 
 # Función principal
 def main():
     # Cargar el dataset y procesar las letras
     df = pd.read_csv("dataset.csv")
     dataset = {row['song_id']: preProcesamiento(row['lyrics']) for _, row in df.iterrows()}
+
+    # Calcular IDF para todo el dataset
+    idf = calcular_idf(dataset)
 
     # Medir tiempo de construcción del índice invertido
     start_time_indexing = time.time()
@@ -134,17 +187,11 @@ def main():
     print(f"Tiempo de construcción del índice invertido: {end_time_indexing - start_time_indexing:.2f} segundos")
 
     # Realizar y medir el tiempo de una búsqueda de ejemplo
-    query = "I look at you look at me I can tell you only see some type of end Fuckin' with me now  actin' like"
+    query = " boricua que me puso de apodo ""Leche Con Dulce""'Tamo en RD  y ella me dice ""Santurce""Yo pago porque ando en un Pagani Gasto  gasto  y nunca pido tani Te picho como Ohtani  bateo como Manny Te lo vo'a hundi' como se hundió el Titanic You might also like Cuando yo bebo  me dicen la' mujere' que me pongo Bellacoso Cuando yo bebo  me dicen la' mujere' que me pongo Bellacoso Bellacoso  bellacoso Bella-Bella-Bellacoso Bellacón  bellacón  bellacón  bellacón Culo-Culo-Culo-Culo  teta-teta Tú me tienes bellacón  bellacón  bellacón  bellacón Bellacón Teta-Teta-Teta-Teta Pase en el jacuzzi  nos damo' un shower El cuarto está arriba  en el último piso 'el tower Yo estoy pa' ti  bae  twenty four hours Mucho' te quieren  pero no tienen el power Yo-Yo estoy pa' ti  bae  twenty four hours Mucho' te quieren  pero no tienen el power Vivimo' la película completa  ey Hago que brinquen lo' culos y las tetas Deja las fotos  no me comprometas Tienes talento cuando en el tubo te trepas No tengo efectivo  pero tengo la tarjeta Si tú quieres cash  rompo la caleta Tú me tienes bellacón  bellacón  bellacón  bellacón Culo-Culo-Culo-Culo  teta-teta Tú me tienes bellacón  bellacón  bellacón  bellacón Bellacón Teta-Teta-Teta-Teta Bellacón  bellacón  bellacón  bellacón Bellacón  bellacón  bellacón Bella-Bella-Bellacón  bellacón  bellacón  bellacón Bellacón  bellacón  bellacón  bellacón Cuando yo bebo  me dicen la' mujere' que me pongo Bellacoso Cuando yo bebo  me dicen la' mujere' que me pongo Bellacoso Bellacoso  bellacoso B"
     start_time_search = time.time()
-    resultados = buscar_letra(query)
+    buscar_letra(query, dataset, idf, df)
     end_time_search = time.time()
     print(f"Tiempo de consulta de búsqueda: {end_time_search - start_time_search:.2f} segundos")
-
-    # Imprimir resultados de la consulta
-    print(f"Resultados para la consulta '{query}':")
-    for song_id, score in resultados:
-        song_info = df[df['song_id'] == song_id][['song', 'artists']].values[0]
-        print(f"{song_info[0]} por {song_info[1]} - Frecuencia: {score}")
 
 if __name__ == "__main__":
     main()
