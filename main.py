@@ -12,7 +12,7 @@ import heapq
 
 # Descargar recursos de NLTK necesarios
 nltk.download('punkt')
-stemmer = SnowballStemmer('spanish')
+stemmer = SnowballStemmer('english')
 
 # Cargar la lista de stopwords
 with open("utils/stoplist.txt", encoding="latin1") as file:
@@ -75,6 +75,10 @@ def similitud_coseno(vec1, vec2):
 def spimi_construir_indice(dataset, bloque_tam=500, ruta="indice_invertido"):
     if not os.path.exists(ruta):
         os.makedirs(ruta)
+    
+    if os.path.exists(f"{ruta}/indice_final.bin"):
+        print("Índice invertido ya construido.")
+        return
 
     contador_bloque = 0  # Contador de bloques
     indice_invertido = defaultdict(dict)  # Diccionario temporal para el índice en memoria
@@ -167,9 +171,31 @@ def buscar_letra(query, dataset, idf, df, ruta="indice_invertido", top_k=5):
     resultados_ordenados = sorted(similitudes, key=lambda x: x[1], reverse=True)[:top_k]
     
     # Imprimir resultados de la consulta
+    formattedRes = []
     for doc_id, score in resultados_ordenados:
-        song_info = df[df['song_id'] == doc_id][['song', 'artists']].values[0]
-        print(f"{song_info[0]} por {song_info[1]} - Similitud de Coseno: {score:.4f}")
+        song_info = df[df['song_id'] == doc_id].values[0]
+        data = {
+            "song": song_info[3],
+            "artist": eval(song_info[4])[0],
+            "genre": ", ".join(song_info[6].split(";")[:3]),
+            "score": round(score, 4)
+        }
+        formattedRes.append(data)
+    
+    return formattedRes
+
+def setupIndex():
+    global _df, _dataset, _idf
+    
+    _df = pd.read_csv("dataset.csv")
+    _dataset = {row['song_id']: preProcesamiento(row['lyrics']) for _, row in _df.iterrows()}
+    _idf = calcular_idf(_dataset)
+
+    spimi_construir_indice(_dataset)
+
+def querySearch(query, top_k=5):
+    global _df, _dataset, _idf
+    return buscar_letra(query, _dataset, _idf, _df, top_k=top_k)
 
 # Función principal
 def main():
@@ -187,7 +213,7 @@ def main():
     print(f"Tiempo de construcción del índice invertido: {end_time_indexing - start_time_indexing:.2f} segundos")
 
     # Realizar y medir el tiempo de una búsqueda de ejemplo
-    query = " boricua que me puso de apodo ""Leche Con Dulce""'Tamo en RD  y ella me dice ""Santurce""Yo pago porque ando en un Pagani Gasto  gasto  y nunca pido tani Te picho como Ohtani  bateo como Manny Te lo vo'a hundi' como se hundió el Titanic You might also like Cuando yo bebo  me dicen la' mujere' que me pongo Bellacoso Cuando yo bebo  me dicen la' mujere' que me pongo Bellacoso Bellacoso  bellacoso Bella-Bella-Bellacoso Bellacón  bellacón  bellacón  bellacón Culo-Culo-Culo-Culo  teta-teta Tú me tienes bellacón  bellacón  bellacón  bellacón Bellacón Teta-Teta-Teta-Teta Pase en el jacuzzi  nos damo' un shower El cuarto está arriba  en el último piso 'el tower Yo estoy pa' ti  bae  twenty four hours Mucho' te quieren  pero no tienen el power Yo-Yo estoy pa' ti  bae  twenty four hours Mucho' te quieren  pero no tienen el power Vivimo' la película completa  ey Hago que brinquen lo' culos y las tetas Deja las fotos  no me comprometas Tienes talento cuando en el tubo te trepas No tengo efectivo  pero tengo la tarjeta Si tú quieres cash  rompo la caleta Tú me tienes bellacón  bellacón  bellacón  bellacón Culo-Culo-Culo-Culo  teta-teta Tú me tienes bellacón  bellacón  bellacón  bellacón Bellacón Teta-Teta-Teta-Teta Bellacón  bellacón  bellacón  bellacón Bellacón  bellacón  bellacón Bella-Bella-Bellacón  bellacón  bellacón  bellacón Bellacón  bellacón  bellacón  bellacón Cuando yo bebo  me dicen la' mujere' que me pongo Bellacoso Cuando yo bebo  me dicen la' mujere' que me pongo Bellacoso Bellacoso  bellacoso B"
+    query = "Hello darkness my old friend"
     start_time_search = time.time()
     buscar_letra(query, dataset, idf, df)
     end_time_search = time.time()

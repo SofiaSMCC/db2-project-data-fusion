@@ -9,7 +9,7 @@ import Notification from './components/Notification';
 
 export default function Home() {
   const [data, setData] = useState([]);
-  const [query, setQuery] = useState(`SELECT * from SongsLyrics WHERE lyric "Better than home" LIMIT 10`);
+  const [query, setQuery] = useState(`SELECT * from SongsLyrics WHERE lyric "yellow brick road" USING SelfIndex LIMIT 10 \nSELECT * from SongsLyrics WHERE lyric "yellow brick road" USING SPIMI LIMIT 10`);
   const [time, setTime] = useState<number | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 

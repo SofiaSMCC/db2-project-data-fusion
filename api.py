@@ -1,13 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from main import buscar_letra
+import pandas as pd
+from main import querySearch, setupIndex
 import regex as re
+import psycopg2
+import uvicorn
 
 class Base(BaseModel):
     query: str
 
 app = FastAPI()
+connection = psycopg2.connect(database="postgres", user="postgres", password="docker", host="localhost", port=5432)
+cursor = connection.cursor()
 
 @app.post("/query")
 async def root(query: Base):
@@ -18,16 +23,25 @@ async def root(query: Base):
 
 def parseQuery(query: str):
     q = [p.lower() for p in re.split("( |\\\".*?\\\"|'.*?')", query) if p.strip()]
+    res = []
 
-    if q[0] == "select" and q[5] == "lyric" and q[7] == "limit":
-        match = q[6]
-        k = int(q[8])
+    if q[0] == "select":
+        if q[3] == "songslyrics" and q[5] == "lyric":
+            if q[8] == "selfindex":
+                match = q[6]
+                k = int(q[10])
 
-        res = buscar_letra(match, top_k=k)
-        if(res == None):
-            return []
+                res = querySearch(match, top_k=k)
+                print(res)
+                if(res == None):
+                    return []
+            elif q[8] == "spimi":
+                cursor.execute("SELECT * FROM dataset")
+                record = cursor.fetchall()
 
-        return res
+                print(record)
+
+    return res
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,5 +52,5 @@ app.add_middleware(
 )
 
 if __name__ == "__main__":
-    import uvicorn
+    setupIndex()
     uvicorn.run(app)
