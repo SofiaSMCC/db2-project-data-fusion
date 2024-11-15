@@ -11,8 +11,8 @@ class Base(BaseModel):
     query: str
 
 app = FastAPI()
-connection = psycopg2.connect(database="postgres", user="postgres", password="docker", host="localhost", port=5432)
-cursor = connection.cursor()
+# connection = psycopg2.connect(database="postgres", user="postgres", password="docker", host="localhost", port=5432)
+# cursor = connection.cursor()
 
 @app.post("/query")
 async def root(query: Base):
@@ -36,10 +36,10 @@ def parseQuery(query: str):
                 if(res == None):
                     return []
             elif q[8] == "spimi":
-                cursor.execute("SELECT * FROM dataset")
-                record = cursor.fetchall()
-
-                print(record)
+                # cursor.execute("SELECT * FROM dataset")
+                # record = cursor.fetchall()
+                
+                print('record')
 
     return res
 
