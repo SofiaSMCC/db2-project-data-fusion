@@ -19,12 +19,14 @@ lib64/
 parts/
 sdist/
 var/
+venv/
 wheels/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
+.DS_STORE
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
