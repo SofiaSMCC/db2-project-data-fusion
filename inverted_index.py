@@ -3,6 +3,7 @@ import nltk
 from nltk.stem.snowball import SnowballStemmer
 from nltk.tokenize import RegexpTokenizer
 from collections import defaultdict
+import regex as re
 import os
 import json
 import math
@@ -14,9 +15,9 @@ class InvertedIndex:
         self.stemmer = SnowballStemmer('english')
         self.stoplist = []
 
-        with open("utils/stoplist.txt", encoding="latin1") as file:
+        with open("utils/stoplist.txt", encoding="utf-8") as file:
             self.stoplist = set(line.rstrip().lower() for line in file)
-        self.stoplist.update(['?', '-', '.', ':', ',', '!', ';'])
+        self.stoplist.update(['?', '-', '.', ':', ',', '!', ';', '_'])
 
         self.data = pd.read_csv(dataset)
         self.dataset = { row['song_id']: self.pre_processing(row['lyrics']) for _, row in self.data.iterrows() }
@@ -29,7 +30,13 @@ class InvertedIndex:
         text = text.lower()
         tokenizer = RegexpTokenizer(r'\w+')
         words = tokenizer.tokenize(text)
-        words = [word for word in words if word not in self.stoplist]
+        words = [
+            word for word in words 
+            if word.isascii() 
+            and not re.search(r'\d', word)
+            and '_' not in word 
+            and word not in self.stoplist
+        ]
         if stemming:
             words = [self.stemmer.stem(word) for word in words]
         return words
