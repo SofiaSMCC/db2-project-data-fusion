@@ -1,46 +1,42 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import pandas as pd
-from main import querySearch, setupIndex
+from inverted_index import InvertedIndex
+from postgres_query import PostgresQuery
 import regex as re
-import psycopg2
 import uvicorn
 
-class Base(BaseModel):
-    query: str
-
 app = FastAPI()
-# connection = psycopg2.connect(database="postgres", user="postgres", password="docker", host="localhost", port=5432)
-# cursor = connection.cursor()
+index = InvertedIndex('utils/dataset.csv')
+postgres = PostgresQuery()
 
 @app.post("/query")
-async def root(query: Base):
-    if query.query == "":
+async def root(query: str):
+    if query == "":
         return []
 
-    return parseQuery(query.query)
+    return parseQuery(query)
 
 def parseQuery(query: str):
     q = [p.lower() for p in re.split("( |\\\".*?\\\"|'.*?')", query) if p.strip()]
     res = []
+    
+    operator = q[0]
+    condition = q[3]
+    text_query = q[5]
+    type = q[7]
+    limit = q[9]
 
-    if q[0] == "select":
-        if q[3] == "songslyrics" and q[5] == "lyric":
-            if q[8] == "selfindex":
-                match = q[6]
-                k = int(q[10])
-
-                res = querySearch(match, top_k=k)
-                print(res)
+    if operator == "select":
+        if condition == "lyrics":
+            if type == "spimi":
+                res = index.query_search(text_query, top_k=int(limit))
                 if(res == None):
                     return []
-            elif q[8] == "spimi":
-                # cursor.execute("SELECT * FROM dataset")
-                # record = cursor.fetchall()
                 
-                print('record')
-
+            elif type == "postgresql":
+                res = postgres.query_search(text_query, top_k=int(limit))
+                if(res == None):
+                    return []
     return res
 
 app.add_middleware(
@@ -52,5 +48,6 @@ app.add_middleware(
 )
 
 if __name__ == "__main__":
-    setupIndex()
+    index.spimi_invert()
+    postgres.create_table()
     uvicorn.run(app)

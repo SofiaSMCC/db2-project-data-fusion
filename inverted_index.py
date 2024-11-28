@@ -22,11 +22,11 @@ class InvertedIndex:
         self.data = pd.read_csv(dataset)
         self.dataset = { row['song_id']: self.pre_processing(row['lyrics']) for _, row in self.data.iterrows() }
         self.path = 'utils/inverted_index'
-        self.total_docs = len(self.dataset)
+        self.total_docs = len(self.data)
         self.total_blocks = 0
         self.block_limit = 500
 
-    def pre_processing(self, text, stemming=True):
+    def pre_processing(self, text, stemming=False):
         text = text.lower()
         tokenizer = RegexpTokenizer(r'\w+')
         words = tokenizer.tokenize(text)
@@ -129,88 +129,60 @@ class InvertedIndex:
         with open(f"{self.path}/block_{block_count}.json", "w") as file:
             json.dump(sorted_values, file, indent=4)
 
-    def calculate_idf(self, all_docs_per_term):
-        idf = {}
-        for term, docs in all_docs_per_term.items():
-            df = len(docs)
-            idf[term] = math.log(self.total_docs / df)
-        return idf
+    def search_in_blocks(self, word):
+        self.total_blocks = len([name for name in os.listdir(self.path) if os.path.isfile(os.path.join(self.path, name)) 
+                                 and name.startswith('block_')])
 
-    """
-    TF-IDF Calculation & Searching
-    """
+        left, right = 0, self.total_blocks - 1
+        while left <= right:
+            mid = (left + right) // 2
 
-    def calculate_tfidf_for_document(self, data, idf):
-        tfidf = {}
-        for term, docs in data.items():
-            for doc, tf in docs.items():
-                tfidf_score = tf * idf.get(term, 0)
-                if doc not in tfidf:
-                    tfidf[doc] = {}
-                tfidf[doc][term] = tfidf_score
-        return tfidf
+            with open(f"{self.path}/block_{mid}.json", "r") as file:
+                data = json.load(file)
 
-    def cosine_similarity(self, query, document):
-        terms = set(query.keys()).union(document.keys())
-        
-        dot_product = sum(query.get(term, 0) * document.get(term, 0) for term in terms)
-        query_magnitude = math.sqrt(sum(query.get(term, 0) ** 2 for term in terms))
-        document_magnitude = math.sqrt(sum(document.get(term, 0) ** 2 for term in terms))
-        
-        if query_magnitude == 0 or document_magnitude == 0:
-            return 0
-        return dot_product / (query_magnitude * document_magnitude)
+                keys = list(data.keys())
+                if word in data:
+                    return data[word]
+                elif word < keys[0]:
+                    right = mid - 1
+                elif word > keys[-1]:
+                    left = mid + 1
+                else:
+                    break
 
-    def query_rank(self, query_terms, idf, tfidf):
-        query_vector = {}
-        for term in query_terms:
-            if term in idf:
-                query_vector[term] = idf[term]
-        
-        similarities = {}
-        for doc, doc_tfidf in tfidf.items():
-            similarity = self.cosine_similarity(query_vector, doc_tfidf)
-            similarities[doc] = similarity
-        
-        ranked_docs = sorted(similarities.items(), key=lambda item: item[1], reverse=True)
-        return ranked_docs
+        return -1
     
-    def query_search(self, query, top_k):
-        query_terms = self.pre_processing(query)
+    def query_search(self, query, top_k=5):
+        query = self.pre_processing(query)
+        query_tf = { term: query.count(term) for term in query }
+        query_tfidf = {}
+        document_magnitude = {}
+        scores = {}
 
-        all_docs_per_term = {}
+        for term in query_tf:
+            term_data = self.search_in_blocks(term)
+            if term_data == -1:
+                continue
 
-        for file_name in os.listdir(self.path):
-            if file_name.endswith('.json'):
-                with open(os.path.join(self.path, file_name), "r") as file:
-                    file_data = json.load(file)
-                    for term, docs in file_data.items():
-                        if term not in all_docs_per_term:
-                            all_docs_per_term[term] = {}
-                        for doc, tf in docs.items():
-                            if doc not in all_docs_per_term[term]:
-                                all_docs_per_term[term][doc] = 0
-                            all_docs_per_term[term][doc] += tf
+            idf = math.log10(self.total_docs / len(term_data))
+            query_tfidf[term] = math.log10(1 + query_tf[term]) * idf
 
-        idf = self.calculate_idf(all_docs_per_term)
+            for doc_id, freq in term_data.items():
+                doc_tfidf = math.log10(1 + freq) * idf
+                scores[doc_id] = scores.get(doc_id, 0) + doc_tfidf * query_tfidf[term]
+                document_magnitude[doc_id] = document_magnitude.get(doc_id, 0) + doc_tfidf ** 2
 
-        tfidf = {}
-        for file_name in os.listdir(self.path):
-            if file_name.endswith('.json'):
-                with open(os.path.join(self.path, file_name), "r") as file:
-                    file_data = json.load(file)
-                    file_tfidf = self.calculate_tfidf_for_document(file_data, idf)
-                    for doc, doc_tfidf in file_tfidf.items():
-                        if doc not in tfidf:
-                            tfidf[doc] = {}
-                        for term, score in doc_tfidf.items():
-                            tfidf[doc][term] = score
+        query_magnitude = math.sqrt(sum(val ** 2 for val in query_tfidf.values()))
+        for doc_id in scores:
+            doc_vector_magnitude = math.sqrt(document_magnitude[doc_id])
+            scores[doc_id] = scores[doc_id] / (query_magnitude * doc_vector_magnitude)
 
-        ranked_docs = self.query_rank(query_terms, idf, tfidf)
-        return ranked_docs[:top_k]
+        return list(sorted(scores.items(), key=lambda x: x[1], reverse=True))[:top_k]
 
 if __name__ == "__main__":
     index = InvertedIndex('utils/dataset.csv')
 
-    index.spimi_invert()
+    # index.spimi_invert()
+    # print(index.calc_tf('goodbye', 'spotify:track:3GzbUESYBLZWpEKuxXI5nV'))
+    # print(index.query_search('Goodbye yellow brick road', 5))
     print(index.query_search('Goodbye yellow brick road', 5))
