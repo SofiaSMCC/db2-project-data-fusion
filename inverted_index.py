@@ -32,9 +32,6 @@ class InvertedIndex:
         self.block_limit = 500
         self.idf = {}  # Diccionario para almacenar IDF precalculado
 
-        # Precalcular el IDF (optimización)
-        self.precalculate_idf()
-
     def pre_processing(self, text, stemming=False):
         text = text.lower()
         tokenizer = RegexpTokenizer(r'\w+')
@@ -49,20 +46,12 @@ class InvertedIndex:
 
     def precalculate_idf(self):
         """Precalcular el IDF para todos los términos en el dataset."""
-        dictionary = defaultdict(dict)
-        
-        for doc_id, words in self.dataset.items():
-            for word in words:
-                if word not in dictionary:
-                    dictionary[word] = { doc_id: 1 }
-                else:
-                    if doc_id in dictionary[word]:
-                        dictionary[word][doc_id] += 1
-                    else:
-                        dictionary[word][doc_id] = 1
-        
-        for word, postings in dictionary.items():
-            self.idf[word] = math.log10(self.total_docs / len(postings))
+        for block in range(self.total_blocks):
+            with open(f"{self.path}/block_{block}.bin", "rb") as file:
+                data = pickle.load(file)
+
+                for word, postings in data.items():
+                    self.idf[word] = math.log10(self.total_docs / len(postings))
     
     def spimi_invert(self):
         start_time = time.time()  # Medir el tiempo de inicio
@@ -94,6 +83,7 @@ class InvertedIndex:
             self.save_temp_block(dictionary, block_count)
 
         self.merge_all_blocks()
+        self.precalculate_idf()
 
         end_time = time.time()  # Medir el tiempo de finalización
         print(f"Tiempo para construir el índice invertido: {end_time - start_time:.2f} segundos.")
@@ -191,40 +181,35 @@ class InvertedIndex:
     
     def query_search(self, query, top_k=5):
         """Realizar búsqueda por consulta usando TF-IDF."""
-        start_time = time.time()  # Medir el tiempo de inicio
-        query = self.pre_processing(query)
-        query_tf = { term: query.count(term) for term in query }
-        query_tfidf = {}
-        document_magnitude = {}
-        scores = {}
+        query_words = self.pre_processing(query)
 
-        # Calcular TF-IDF para cada término de la consulta
-        for term in query_tf:
-            if term not in self.idf:
-                continue  # Si no existe el término en el índice invertido, se omite
+        term_freq = defaultdict(int)
+        weights = defaultdict(float)
 
-            idf = self.idf[term]
-            query_tfidf[term] = math.log10(1 + query_tf[term]) * idf
+        for word in query_words:
+            term_freq[word] += 1
 
-            term_data = self.search_in_blocks(term)
-            if term_data == -1:
-                continue
+        query_pow2_len = 0
+        docs_pow2_lens = defaultdict(float)
 
-            for doc_id, freq in term_data.items():
-                doc_tfidf = math.log10(1 + freq) * idf
-                scores[doc_id] = scores.get(doc_id, 0) + doc_tfidf * query_tfidf[term]
-                document_magnitude[doc_id] = document_magnitude.get(doc_id, 0) + doc_tfidf ** 2
+        for block in range(self.total_blocks):
+            with open(f"{self.path}/block_{block}.bin", "rb") as file:
+                data = pickle.load(file)
 
-        # Normalizar los puntajes utilizando las magnitudes de los vectores
-        query_magnitude = math.sqrt(sum(val ** 2 for val in query_tfidf.values()))
-        for doc_id in scores:
-            doc_vector_magnitude = math.sqrt(document_magnitude[doc_id])
-            scores[doc_id] = scores[doc_id] / (query_magnitude * doc_vector_magnitude)
+                for word, postings in data.items():
+                    query_tf_idf = math.log10(1 + term_freq[word]) * self.idf[word]
+                    query_pow2_len += query_tf_idf ** 2
 
-        end_time = time.time()  # Medir el tiempo de finalización
-        print(f"Tiempo para procesar la consulta: {end_time - start_time:.2f} segundos.")
-        
-        return list(sorted(scores.items(), key=lambda x: x[1], reverse=True))[:top_k]
+                    for doc_id, tf in postings.items():
+                        docs_pow2_lens[doc_id] += (math.log10(1 + tf) * self.idf[word]) ** 2
+                        weights[doc_id] += query_tf_idf * math.log10(1 + tf) * self.idf[word]
+            
+        for i in weights:
+            if (query_pow2_len > 0 and weights[i] > 0):
+                weights[i] /= (math.sqrt(query_pow2_len) * math.sqrt(docs_pow2_lens[i]))
+            
+        results = sorted(weights.items(), key=lambda x: x[1], reverse=True)
+        return results[:top_k]
 
 if __name__ == "__main__":
     # Medir tiempo de construcción del índice
@@ -237,5 +222,5 @@ if __name__ == "__main__":
     print(f"Tiempo total para construir el índice invertido: {end_time - start_time:.2f} segundos.")
 
     # Realizar una búsqueda de ejemplo
-    query_result = index.query_search('Goodbye yellow brick road', 5)
+    query_result = index.query_search('In a haze, a stormy haze', 5)
     print("Top 5 resultados de búsqueda:", query_result)
