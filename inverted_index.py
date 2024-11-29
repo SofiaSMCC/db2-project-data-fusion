@@ -208,8 +208,22 @@ class InvertedIndex:
             if (query_pow2_len > 0 and weights[i] > 0):
                 weights[i] /= (math.sqrt(query_pow2_len) * math.sqrt(docs_pow2_lens[i]))
             
-        results = sorted(weights.items(), key=lambda x: x[1], reverse=True)
-        return results[:top_k]
+        results = sorted(weights.items(), key=lambda x: x[1], reverse=True)[:top_k]
+
+        formatted_res = []
+        for doc_id, score in results:
+            song_info = self.data[self.data['song_id'] == doc_id].values[0]
+            data = {
+                "song_id": song_info[1],
+                "song": song_info[3],
+                "artist": eval(song_info[4])[0],
+                "genre": ", ".join(song_info[6].split(";")[:3]) if isinstance(song_info[6], str) else "",
+                "score": round(score, 4),
+                "lyrics": song_info[7]
+            }
+            formatted_res.append(data)
+        
+        return formatted_res
 
 if __name__ == "__main__":
     # Medir tiempo de construcción del índice

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
     PaginationState,
     useReactTable,
@@ -11,39 +11,112 @@ import {
 interface TableProps {
     data: any[];
     time: number | null;
+    onLyricsClick: any
 }
 
-export default function Table({ data, time }: TableProps) {
+async function getSongCover(song: string, artist: string): Promise<string> {
+    try {
+        const response = await fetch(`https://itunes.apple.com/search?term=${song}+${artist}&entity=song`);
+        const data = await response.json();
+        return data.results[0]?.artworkUrl100 || '';
+    } catch (error) {
+        console.error('Error fetching song cover:', error);
+        return '';
+    }
+}
+
+function formatLyrics(inputText: string) {
+    const text = inputText
+                .replace(/^[^\n]*\sLyrics\s*/, '')
+                .replace(/\s*You might also like\d*Embed\s*$/, '')
+                .replace(/\s*\d*Embed\s*$/, '')
+                .replace('  ', ' ');
+
+    const lines = text.split(/(?<!\w)(?=[A-Z])/);
+    const formattedText = lines.map(line => line.trim()).join("\n");
+    return formattedText;
+}
+
+export default function Table({ data, time, onLyricsClick }: TableProps) {
     const [pagination, setPagination] = useState<PaginationState>({
         pageIndex: 0,
         pageSize: 10,
     });
 
-    const generateColumns = (): ColumnDef<any>[] => {
-        if (data.length === 0) return [];
+    const columns = React.useMemo<ColumnDef<any>[]>(() => [
+        {
+            accessorKey: 'n',
+            header: () => '#',
+            cell: info => info.row.index + 1,
+            footer: props => props.column.id,
+        },
+        {
+            accessorKey: 'song_cover',
+            header: 'Cover',
+            cell: ({ row }) => {
+                const [imageUrl, setImageUrl] = useState<string>('');
 
-        const keys = Object.keys(data[0]);
-        const dynamicColumns = keys.map((key) => ({
-            accessorKey: key,
-            header: () => key.charAt(0).toUpperCase() + key.slice(1),
-            cell: (info: any) => info.getValue(),
-            footer: (props: any) => props.column.id,
-        }));
+                useEffect(() => {
+                    const fetchCover = async () => {
+                        const song = row.original.song;
+                        const artist = row.original.artist;
+                        const coverUrl = await getSongCover(song, artist);
+                        setImageUrl(coverUrl);
+                    };
+                    fetchCover();
+                }, [row.original.song, row.original.artist]);
 
-        return [
-            {
-                accessorKey: 'n',
-                header: () => '#',
-                cell: info => info.row.index + 1,
-                footer: props => props.column.id,
+                return imageUrl ? (
+                    <img
+                        src={imageUrl}
+                        alt={`${row.original.song} cover`}
+                        className="flex w-16 h-16 object-cover mx-auto"
+                    />
+                ) : (
+                    <div className="w-16 h-16 flex justify-center items-center bg-gray-200">
+                        Loading...
+                    </div>
+                );
             },
-            ...dynamicColumns,
-        ];
-    };
-
-    const columns = React.useMemo<ColumnDef<any>[]>(() => {
-        return generateColumns();
-    }, [data]);
+            footer: props => props.column.id,
+        },
+        {
+            accessorKey: 'song',
+            header: 'Song',
+            cell: info => info.getValue(),
+            footer: props => props.column.id,
+        },
+        {
+            accessorKey: 'artist',
+            header: 'Artist',
+            cell: info => info.getValue(),
+            footer: props => props.column.id,
+        },
+        {
+            accessorKey: 'genre',
+            header: 'Genres',
+            cell: info => info.getValue(),
+            footer: props => props.column.id,
+        },
+        {
+            accessorKey: 'score',
+            header: 'Score',
+            cell: info => info.getValue(),
+            footer: props => props.column.id,
+        },
+        {
+            accessorKey: 'lyrics',
+            header: 'Lyrics',
+            cell: ({ row }) => {
+                return (
+                    <button className='underline text-xs' onClick={() => onLyricsClick({ song: row.original.song, artist: row.original.artist, text: formatLyrics(row.original.lyrics)}) }>
+                        Show Lyrics
+                    </button>
+                )
+            },
+            footer: props => props.column.id,
+        }
+    ], []);
 
     const table = useReactTable({
         data,
@@ -55,7 +128,7 @@ export default function Table({ data, time }: TableProps) {
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         debugTable: true,
-    })
+    });
 
     return (
         <div className="w-full overflow-hidden">
@@ -65,7 +138,7 @@ export default function Table({ data, time }: TableProps) {
                 </div>
             ) : (
                 <div className='overflow-x-scroll'>
-                    <table className="text-center table">
+                    <table className="w-full text-center table">
                         <thead>
                             {table.getHeaderGroups().map(headerGroup => (
                                 <tr key={headerGroup.id}>
