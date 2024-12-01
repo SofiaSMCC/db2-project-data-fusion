@@ -6,6 +6,7 @@ import 'prismjs/components/prism-sql';
 import 'prismjs/themes/prism-tomorrow.css';
 import Table from './components/Table';
 import Notification from './components/Notification';
+import StopWords from './utils/stopwords';
 
 export default function Home() {
   const [data, setData] = useState([]);
@@ -14,7 +15,6 @@ export default function Home() {
   const [notification, setNotification] = useState<string | null>(null);
   const [lyrics, setLyrics] = useState<any | null>(null);
   const [showLyrics, setShowLyrics] = useState<boolean>(false);
-  const stopList = ["a", "an", "the", "and", "or", "but", "if", "then", "else", "when", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once"];
 
   const executeQuery = (queryToExecute: string | undefined) => {
     if (!queryToExecute) {
@@ -81,13 +81,13 @@ export default function Home() {
                 {lyrics?.text.split('\n').map((line: string, index: number) => (
                   <p key={index}>
                     {line.split(' ').map((word, wordIndex) => {
-                      const highlightWords = query
-                        .replace(',', '')
-                        .replace(';', '')
-                        .replace('!', '')
-                        .replace('?', '')
-                        .split(' ').filter((queryWord) => !stopList.includes(queryWord) && queryWord.toLowerCase().trim());
-                      const isHighlighted = highlightWords.includes(word.toLowerCase().trim());
+                      const highlightWords = query?.match(/"(.*?)"/)?.[1]
+                          .replace(/[^\w\s]/g, '')
+                          .toLowerCase()
+                          .split(" ")
+                          .filter((queryWord) => !StopWords.includes(queryWord)) || [];
+                      console.log(highlightWords);
+                      const isHighlighted = highlightWords.includes(word.toLowerCase());
 
                       return isHighlighted ? (
                         <span key={wordIndex}>

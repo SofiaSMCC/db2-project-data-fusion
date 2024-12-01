@@ -6,7 +6,6 @@ from collections import defaultdict
 import os
 import math
 import pickle
-from joblib import Parallel, delayed
 import time
 import bisect  # Para la búsqueda binaria en claves ordenadas
 
@@ -18,40 +17,30 @@ class InvertedIndex:
         self.stoplist = set()
 
         # Cargar la lista de stopwords
-        with open("utils/stoplist.txt", encoding="utf-8") as file:
+        with open("Proyecto 2/utils/stoplist.txt", encoding="utf-8") as file:
             self.stoplist = set(line.rstrip().lower() for line in file)
         self.stoplist.update(['?', '-', '.', ':', ',', '!', ';', '_'])
 
         # Leer el dataset
         self.data = pd.read_csv(dataset)
         self.dataset = { row['song_id']: self.pre_processing(row['lyrics']) for _, row in self.data.iterrows() }
-
-        self.path = 'utils/inverted_index'
+        
+        self.path = 'Proyecto 2/utils/inverted_index'
         self.total_docs = len(self.data)
         self.total_blocks = 0
         self.block_limit = 500
-        self.idf = {}  # Diccionario para almacenar IDF precalculado
 
     def pre_processing(self, text, stemming=False):
         text = text.lower()
         tokenizer = RegexpTokenizer(r'\w+')
         words = tokenizer.tokenize(text)
         words = [
-            word for word in words
+            word for word in words 
             if word.isascii() and word.isalpha() and word not in self.stoplist
         ]
         if stemming:
             words = [self.stemmer.stem(word) for word in words]
         return words
-
-    def precalculate_idf(self):
-        """Precalcular el IDF para todos los términos en el dataset."""
-        for block in range(self.total_blocks):
-            with open(f"{self.path}/block_{block}.bin", "rb") as file:
-                data = pickle.load(file)
-
-                for word, postings in data.items():
-                    self.idf[word] = math.log10(self.total_docs / len(postings))
     
     def spimi_invert(self):
         start_time = time.time()  # Medir el tiempo de inicio
@@ -83,7 +72,6 @@ class InvertedIndex:
             self.save_temp_block(dictionary, block_count)
 
         self.merge_all_blocks()
-        self.precalculate_idf()
 
         end_time = time.time()  # Medir el tiempo de finalización
         print(f"Tiempo para construir el índice invertido: {end_time - start_time:.2f} segundos.")
@@ -91,38 +79,38 @@ class InvertedIndex:
     def merge_blocks(self, start, finish):
         """Fusionar bloques de índice invertido."""
         dictionary = defaultdict(dict)
-
+        
         for i in range(start, min(finish + 1, self.total_blocks)):
             with open(f"{self.path}/temp_block_{i}.bin", "rb") as file:
                 data = pickle.load(file)
                 for word, postings in data.items():
                     dictionary[word].update(postings)
-
+        
         sorted_dict = sorted(dictionary.keys())  # Ordenamos las claves
-
+        
         total_elements = len(sorted_dict)
         num_blocks = finish - start + 1
         block_size, remainder = divmod(total_elements, num_blocks)
-
+        
         temp_dict = {}
         current_block_size = block_size + (1 if remainder > 0 else 0)
         remainder -= 1
         block_count = 0
-
+        
         for word in sorted_dict:
             temp_dict[word] = dictionary[word]
-
+            
             if len(temp_dict) == current_block_size:
                 self.save_block(temp_dict, start + block_count)
                 temp_dict = {}
                 block_count += 1
-
+                
                 if remainder > 0:
                     current_block_size = block_size + 1
                     remainder -= 1
                 else:
                     current_block_size = block_size
-
+        
         if temp_dict:
             self.save_block(temp_dict, start + block_count)
 
@@ -130,7 +118,7 @@ class InvertedIndex:
         """Fusionar todos los bloques de índice invertido en múltiples pasadas."""
         levels = math.ceil(math.log2(self.total_blocks))
         level = 1
-
+        
         while level <= levels:
             step = 2 ** level
             for i in range(0, self.total_blocks, step):
@@ -145,7 +133,7 @@ class InvertedIndex:
         sorted_values = { term: dictionary[term] for term in sorted_keys }
         with open(f"{self.path}/temp_block_{block_count}.bin", "wb") as file:
             pickle.dump(sorted_values, file)
-
+    
     def save_block(self, dictionary, block_count):
         """Guardar bloque final en disco en formato binario."""
         sorted_keys = sorted(dictionary.keys())  # Asegúrate de que las claves estén ordenadas
@@ -155,7 +143,7 @@ class InvertedIndex:
 
     def search_in_blocks(self, word):
         """Buscar un término en los bloques invertidos usando búsqueda binaria en archivos binarios."""
-        self.total_blocks = len([name for name in os.listdir(self.path)
+        self.total_blocks = len([name for name in os.listdir(self.path) 
                                  if os.path.isfile(os.path.join(self.path, name)) and name.startswith('block_')])
 
         left, right = 0, self.total_blocks - 1
@@ -178,7 +166,7 @@ class InvertedIndex:
                     break
 
         return -1
-
+    
     def query_search(self, query, top_k=5):
         """Realizar búsqueda por consulta usando TF-IDF."""
         query_words = self.pre_processing(query)
@@ -197,12 +185,13 @@ class InvertedIndex:
                 data = pickle.load(file)
 
                 for word, postings in data.items():
-                    query_tf_idf = math.log10(1 + term_freq[word]) * self.idf[word]
+                    idf = math.log10(self.total_docs / len(postings))
+                    query_tf_idf = math.log10(1 + term_freq[word]) * idf
                     query_pow2_len += query_tf_idf ** 2
 
                     for doc_id, tf in postings.items():
-                        docs_pow2_lens[doc_id] += (math.log10(1 + tf) * self.idf[word]) ** 2
-                        weights[doc_id] += query_tf_idf * math.log10(1 + tf) * self.idf[word]
+                        docs_pow2_lens[doc_id] += (math.log10(1 + tf) * idf) ** 2
+                        weights[doc_id] += query_tf_idf * math.log10(1 + tf) * idf
             
         for i in weights:
             if (query_pow2_len > 0 and weights[i] > 0):
