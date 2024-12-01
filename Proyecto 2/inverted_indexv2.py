@@ -6,14 +6,13 @@ from collections import defaultdict
 import os
 import math
 import pickle
-from joblib import Parallel, delayed
 import time
 import bisect  # Para la búsqueda binaria en claves ordenadas
 
 nltk.download('punkt')
 
 class InvertedIndex:
-    def __init__(self, dataset):
+    def _init_(self, dataset):
         self.stemmer = SnowballStemmer('english')
         self.stoplist = set()
 
@@ -29,13 +28,14 @@ class InvertedIndex:
         self.path = 'utils/inverted_index'
         self.total_docs = len(self.data)
         self.total_blocks = 0
-        self.block_limit = 500
+        self.block_limit = 500  # Tamaño del bloque
         self.idf = {}  # Diccionario para almacenar IDF precalculado
 
         # Precalcular el IDF (optimización)
         self.precalculate_idf()
 
     def pre_processing(self, text, stemming=False):
+        """Preprocesar el texto: convertir a minúsculas, tokenizar, eliminar stopwords y puntuación."""
         text = text.lower()
         tokenizer = RegexpTokenizer(r'\w+')
         words = tokenizer.tokenize(text)
@@ -61,11 +61,14 @@ class InvertedIndex:
                     else:
                         dictionary[word][doc_id] = 1
         
+        # Calculamos el IDF para cada palabra
         for word, postings in dictionary.items():
             self.idf[word] = math.log10(self.total_docs / len(postings))
-    
+
     def spimi_invert(self):
-        start_time = time.time()  # Medir el tiempo de inicio
+        """Método SPIMI: Construcción del índice invertido con bloques y almacenamiento en disco."""
+        start_time = time.time()
+        
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
@@ -93,9 +96,13 @@ class InvertedIndex:
         if dictionary:
             self.save_temp_block(dictionary, block_count)
 
+        # Después de fusionar los bloques, eliminar los bloques temporales
         self.merge_all_blocks()
 
-        end_time = time.time()  # Medir el tiempo de finalización
+        # Eliminar los archivos temporales (si los hay)
+        self.delete_temp_blocks()
+
+        end_time = time.time()
         print(f"Tiempo para construir el índice invertido: {end_time - start_time:.2f} segundos.")
 
     def merge_blocks(self, start, finish):
@@ -137,7 +144,7 @@ class InvertedIndex:
             self.save_block(temp_dict, start + block_count)
 
     def merge_all_blocks(self):
-        """Fusionar todos los bloques de índice invertido en múltiples pasadas."""
+        """Fusionar todos los bloques de índice invertido en múltiples pasadas y dejar solo el bloque final."""
         levels = math.ceil(math.log2(self.total_blocks))
         level = 1
         
@@ -148,6 +155,14 @@ class InvertedIndex:
                 finish = min(i + step - 1, self.total_blocks)
                 self.merge_blocks(start, finish)
             level += 1
+        
+        # Después de la fusión, asegurarse de que solo haya un bloque final
+        print("Fusión completa. Solo quedará el archivo final.")
+
+        # Renombrar el último archivo de bloque final
+        final_block_path = f"{self.path}/final_index.bin"
+        os.rename(f"{self.path}/block_0.bin", final_block_path)
+        print(f"Índice final guardado como: {final_block_path}")
 
     def save_temp_block(self, dictionary, block_count):
         """Guardar bloque temporal en disco en formato binario."""
@@ -155,13 +170,20 @@ class InvertedIndex:
         sorted_values = { term: dictionary[term] for term in sorted_keys }
         with open(f"{self.path}/temp_block_{block_count}.bin", "wb") as file:
             pickle.dump(sorted_values, file)
-    
+
     def save_block(self, dictionary, block_count):
         """Guardar bloque final en disco en formato binario."""
         sorted_keys = sorted(dictionary.keys())  # Asegúrate de que las claves estén ordenadas
         sorted_values = { term: dictionary[term] for term in sorted_keys }
         with open(f"{self.path}/block_{block_count}.bin", "wb") as file:
             pickle.dump(sorted_values, file)
+
+    def delete_temp_blocks(self):
+        """Eliminar bloques temporales después de que se haya completado la fusión."""
+        temp_files = [f for f in os.listdir(self.path) if f.startswith('temp_block_')]
+        for temp_file in temp_files:
+            os.remove(os.path.join(self.path, temp_file))
+        print(f"Archivos temporales eliminados.")
 
     def search_in_blocks(self, word):
         """Buscar un término en los bloques invertidos usando búsqueda binaria en archivos binarios."""
@@ -174,7 +196,6 @@ class InvertedIndex:
 
             with open(f"{self.path}/block_{mid}.bin", "rb") as file:
                 data = pickle.load(file)
-                # Convertimos las claves a lista para búsqueda binaria
                 sorted_keys = list(data.keys())
                 index = bisect.bisect_left(sorted_keys, word)
 
@@ -188,7 +209,7 @@ class InvertedIndex:
                     break
 
         return -1
-    
+
     def query_search(self, query, top_k=5):
         """Realizar búsqueda por consulta usando TF-IDF."""
         start_time = time.time()  # Medir el tiempo de inicio
@@ -226,7 +247,7 @@ class InvertedIndex:
         
         return list(sorted(scores.items(), key=lambda x: x[1], reverse=True))[:top_k]
 
-if __name__ == "__main__":
+if __name__ == "_main_":
     # Medir tiempo de construcción del índice
     start_time = time.time()
     index = InvertedIndex('utils/dataset.csv')

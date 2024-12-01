@@ -247,7 +247,7 @@ class InvertedIndex:
         
         return list(sorted(scores.items(), key=lambda x: x[1], reverse=True))[:top_k]
 
-if _name_ == "_main_":
+if __name__ == "_main_":
     # Medir tiempo de construcción del índice
     start_time = time.time()
     index = InvertedIndex('utils/dataset.csv')
