@@ -1,9 +1,8 @@
 import cv2
-from google.colab.patches import cv2_imshow  # Para mostrar imágenes en Colab
 
 # Cargar las imágenes
-image1 = cv2.imread('/content/f4116f977cf94064a9acec285237d4f8.jpg', cv2.IMREAD_GRAYSCALE)
-image2 = cv2.imread('/content/fae7e19b15694b738383d0f57f600ed2.jpg', cv2.IMREAD_GRAYSCALE)
+image1 = cv2.imread('poke2/f4116f977cf94064a9acec285237d4f8.jpg', cv2.IMREAD_GRAYSCALE)
+image2 = cv2.imread('poke2/fae7e19b15694b738383d0f57f600ed2.jpg', cv2.IMREAD_GRAYSCALE)
 
 # Crear el detector SIFT
 sift = cv2.SIFT_create()
@@ -32,8 +31,12 @@ result_image = cv2.drawMatches(
     flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
 )
 
+output_path = 'result_image.jpg'  # Ruta donde se guardará la imagen
+cv2.imwrite(output_path, result_image)
+print(f"Imagen guardada en: {output_path}")
+
 # Mostrar el resultado
-cv2_imshow(result_image)
+cv2.imshow("Coincidencias entre imágenes", result_image)
 
 total_keypoints = min(len(keypoints1), len(keypoints2))
 similitud = len(good_matches) / total_keypoints if total_keypoints > 0 else 0
