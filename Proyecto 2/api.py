@@ -7,7 +7,7 @@ import regex as re
 import uvicorn
 
 app = FastAPI()
-index = InvertedIndex('Proyecto 2/utils/dataset.csv')
+index = InvertedIndex('Proyecto 2/utils/spotify_songs.csv')
 postgres = PostgresQuery()
 
 class QueryRequest(BaseModel):

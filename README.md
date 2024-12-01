@@ -1,5 +1,7 @@
 # Data Fusion
 
+> ## Proyecto 2: Indice Invertido Textual
+
 ## Introducción
 
 ### Objetivo del Proyecto
@@ -8,7 +10,7 @@ Desarrollar un sistema integral de base de datos multimedia que optimice la bús
 
 ### Descripción del dataset
 
-Se utilizó una base de datos de Kaggle ([dataset](https://www.kaggle.com/datasets/evabot/spotify-lyrics-dataset)) que contiene 8,673 registros de canciones junto con su información asociada. Cada entrada incluye atributos como `song_id` (ID de la canción), `artist_id` (ID del artista), `song` (nombre de la canción), `artists` (nombres de los artistas), `explicit` (indicador de contenido explícito), `genres` (géneros musicales) y `lyrics` (letras de las canciones). Este conjunto de datos ofrece una amplia variedad de características relacionadas con las canciones y sus artistas, lo que lo convierte en una valiosa fuente para análisis musicales y tareas de recuperación de información.
+Se utilizó una base de datos de Kaggle ([dataset](https://www.kaggle.com/datasets/imuhammad/audio-features-and-lyrics-of-spotify-songs?resource=download)) que contiene 18,000 registros de canciones junto con su información asociada. Cada entrada incluye atributos como `track_id` (ID de la canción), `track_name` (nombre de la canción), `track_artist` (nombres del artista), `track_popularity` (indicador de popularidad), `playlist_genre` (géneros musicales) y `lyrics` (letras de las canciones). Este conjunto de datos ofrece una amplia variedad de características relacionadas con las canciones y sus artistas, lo que lo convierte en una valiosa fuente para análisis musicales y tareas de recuperación de información.
 
 ### Importancia de Aplicar Indexación
 
@@ -209,3 +211,13 @@ def buscar_letra(query, dataset, idf, df, ruta="indice_invertido", top_k=5):
 5. Después de calcular la similitud de coseno para cada documento, se ordenan los resultados de mayor a menor similitud. Se seleccionan solo los top_k documentos más relevantes según la similitud.
 6. Para cada uno de los documentos en los resultados ordenados, se busca la información de la canción correspondiente a doc_id en el dataframe df. Se obtiene el nombre de la canción y el artista(s) asociado(s) a ese documento (song_id).  
 7. Finalmente, se imprime el nombre de la canción, los artistas y la similitud de coseno correspondiente.
+
+### Experimento
+|           | MyIndex        | PostgreSQL |
+|-----------| -------------- | ---------- |
+| N = 500   | 310.40 ms      | 310.40 ms  |
+| N = 1000  | 310.40 ms      | 310.40 ms  |
+| N = 2000  | 310.40 ms      | 310.40 ms  |
+| N = 4000  | 310.40 ms      | 310.40 ms  |
+| N = 6000  | 310.40 ms      | 310.40 ms  |
+| N = 8000  | 310.40 ms      | 310.40 ms  |

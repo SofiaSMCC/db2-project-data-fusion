@@ -23,7 +23,7 @@ class InvertedIndex:
 
         # Leer el dataset
         self.data = pd.read_csv(dataset)
-        self.dataset = { row['song_id']: self.pre_processing(row['lyrics']) for _, row in self.data.iterrows() }
+        self.dataset = { row['track_id']: self.pre_processing(row['lyrics']) for _, row in self.data.iterrows() }
         
         self.path = 'Proyecto 2/utils/inverted_index'
         self.total_docs = len(self.data)
@@ -201,14 +201,14 @@ class InvertedIndex:
 
         formatted_res = []
         for doc_id, score in results:
-            song_info = self.data[self.data['song_id'] == doc_id].values[0]
+            song_info = self.data[self.data['track_id'] == doc_id].values[0]
             data = {
-                "song_id": song_info[1],
-                "song": song_info[3],
-                "artist": eval(song_info[4])[0],
-                "genre": ", ".join(song_info[6].split(";")[:3]) if isinstance(song_info[6], str) else "",
+                "song_id": song_info[0],
+                "song": song_info[1],
+                "artist": song_info[2],
+                "genre": song_info[10],
                 "score": round(score, 4),
-                "lyrics": song_info[7]
+                "lyrics": song_info[3]
             }
             formatted_res.append(data)
         
@@ -217,7 +217,7 @@ class InvertedIndex:
 if __name__ == "__main__":
     # Medir tiempo de construcción del índice
     start_time = time.time()
-    index = InvertedIndex('utils/dataset.csv')
+    index = InvertedIndex('Proyecto 2/utils/spotify_songs.csv')
 
     # Crear el índice invertido
     index.spimi_invert()

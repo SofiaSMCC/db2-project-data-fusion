@@ -10,7 +10,7 @@ import StopWords from './utils/stopwords';
 
 export default function Home() {
   const [data, setData] = useState([]);
-  const [query, setQuery] = useState(`SELECT * WHERE lyrics @@ "In a haze, a stormy haze" USING Spimi LIMIT 10 \nSELECT * WHERE lyrics @@ "In a haze, a stormy haze" USING PostgreSQL LIMIT 10`);
+  const [query, setQuery] = useState(`SELECT * WHERE lyrics @@ "Querida, cada momento de mi vida Yo pienso en ti más cada día Mira mi soledad" USING Spimi LIMIT 10 \nSELECT * WHERE lyrics @@ "Querida, cada momento de mi vida Yo pienso en ti más cada día Mira mi soledad" USING PostgreSQL LIMIT 10`);
   const [time, setTime] = useState<number | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [lyrics, setLyrics] = useState<any | null>(null);
