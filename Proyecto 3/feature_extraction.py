@@ -2,7 +2,8 @@ import torch
 import torchvision.models as models
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
-from knnRtree import KnnRTree
+from Search.knnRtree import KnnRTree
+from Search.KnnHighD import knnHighD_LSH
 from PIL import Image
 import numpy as np
 import heapq
@@ -143,6 +144,14 @@ def main():
     # Visualización
     plot_distance_distribution(data_features_reduced, query_feature_reduced)
 
+    # Búsqueda KNN con Faiss
+    knn_faiss = knnHighD_LSH(dimension = data_features_reduced.shape[1], num_bits = 512)
+    knn_faiss.insert(data_features_reduced)
+
+    distances, indices = knn_faiss.knn_search(query_feature_reduced.reshape(1, -1), k)
+    print("\nKNN con FAISS:")
+    for dist, idx in zip(distances[0], indices[0]):
+        print(f"- {image_paths[idx]} (Distancia: {dist:.4f})")
 
 if __name__ == "__main__":
     main()
