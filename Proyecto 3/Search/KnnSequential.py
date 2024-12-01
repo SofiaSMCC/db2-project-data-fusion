@@ -3,27 +3,28 @@ import numpy as np
 import heapq
 
 # Búsqueda KNN
-def knn_priority_queue_images(data_features, query_feature, k):
+def knn_priority_queue(data_features, query_feature, k):
     start_time = time.time()
 
-    result = []
+    """Realiza la búsqueda KNN usando una cola de prioridad."""
+    heap = []
     for idx, feature in enumerate(data_features):
         dist = np.linalg.norm(query_feature - feature)
-        if len(result) < k:
-            heapq.heappush(result, (-dist, idx))
+        if len(heap) < k:
+            heapq.heappush(heap, (-dist, idx))
         else:
-            heapq.heappushpop(result, (-dist, idx))
-    nearest_neighbors = [idx for _, idx in result]
+            heapq.heappushpop(heap, (-dist, idx))
 
     end_time = time.time()
-    print(f"\nTiempo de búsqueda KNN con cola de prioridad sin indexar: {end_time - start_time:.4f} segundos")
+    print(f"\nTiempo de búsqueda knn sin indexación: {end_time - start_time:.7f} segundos")
 
-    return nearest_neighbors
+    return [(abs(dist), idx) for dist, idx in sorted(heap)]
 
 # Búsqueda por Rango
-def range_search_images(data_features, query_feature, radius):
+def range_search(data_features, query_feature, radius):
     start_time = time.time()
 
+    """Realiza una búsqueda por rango en las características."""
     neighbors = []
     for idx, feature in enumerate(data_features):
         dist = np.linalg.norm(query_feature - feature)
@@ -32,6 +33,6 @@ def range_search_images(data_features, query_feature, radius):
     neighbors.sort(key=lambda x: x[0])
 
     end_time = time.time()
-    print(f"\nTiempo de búsqueda por rango sin indexar: {end_time - start_time:.4f} segundos")
-    
+    print(f"\nTiempo de búsqueda por rango: {end_time - start_time:.7f} segundos")
+
     return neighbors
