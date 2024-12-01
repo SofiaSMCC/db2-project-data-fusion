@@ -8,7 +8,7 @@ import uvicorn
 
 app = FastAPI()
 index = InvertedIndex('Proyecto 2/utils/spotify_songs.csv')
-postgres = PostgresQuery()
+postgres = PostgresQuery('Proyecto 2/utils/spotify_songs.csv')
 
 class QueryRequest(BaseModel):
     query: str

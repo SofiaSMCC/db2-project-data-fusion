@@ -2,9 +2,10 @@ import psycopg2
 import csv
 
 class PostgresQuery:
-    def __init__(self):
+    def __init__(self, dataset):
         self.connection = psycopg2.connect(database="postgres", user="postgres", password="docker", host="localhost", port=5432)
         self.cursor = self.connection.cursor()
+        self.dataset = dataset
 
     def table_exists(self):
         query = """
@@ -52,7 +53,7 @@ class PostgresQuery:
                     language TEXT
                 );
 
-                CREATE INDEX IF NOT EXISTS lyrics_idx ON songs USING gist(to_tsvector('english', lyrics));
+                CREATE INDEX IF NOT EXISTS lyrics_idx ON songs USING gin(to_tsvector('english', lyrics));
                 """
         self.cursor.execute(query)
         self.connection.commit()
@@ -61,7 +62,7 @@ class PostgresQuery:
     
     def insert_data_from_csv(self):
         print('Insertando datos a tabla de PostgreSQL...')
-        with open('Proyecto 2/utils/spotify_songs.csv', 'r') as file:
+        with open(self.dataset, 'r') as file:
             reader = csv.DictReader(file)
             for row in reader:
                 self.cursor.execute("""
