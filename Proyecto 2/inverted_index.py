@@ -46,23 +46,6 @@ class InvertedIndex:
 
     def precalculate_idf(self):
         """Precalcular el IDF para todos los términos en el dataset."""
-<<<<<<< HEAD:Proyecto 2/inverted_index.py
-        dictionary = defaultdict(dict)
-
-        for doc_id, words in self.dataset.items():
-            for word in words:
-                if word not in dictionary:
-                    dictionary[word] = { doc_id: 1 }
-                else:
-                    if doc_id in dictionary[word]:
-                        dictionary[word][doc_id] += 1
-                    else:
-                        dictionary[word][doc_id] = 1
-
-        for word, postings in dictionary.items():
-            self.idf[word] = math.log10(self.total_docs / len(postings))
-
-=======
         for block in range(self.total_blocks):
             with open(f"{self.path}/block_{block}.bin", "rb") as file:
                 data = pickle.load(file)
@@ -70,7 +53,6 @@ class InvertedIndex:
                 for word, postings in data.items():
                     self.idf[word] = math.log10(self.total_docs / len(postings))
     
->>>>>>> f5c1dc038a88d5bae9d026c8b682bc50425c9468:inverted_index.py
     def spimi_invert(self):
         start_time = time.time()  # Medir el tiempo de inicio
         if not os.path.exists(self.path):
@@ -199,49 +181,11 @@ class InvertedIndex:
 
     def query_search(self, query, top_k=5):
         """Realizar búsqueda por consulta usando TF-IDF."""
-<<<<<<< HEAD:Proyecto 2/inverted_index.py
-        start_time = time.time()  # Medir el tiempo de inicio
-        query = self.pre_processing(query)  # Procesamiento previo de la consulta
-        query_tf = {term: query.count(term) for term in query}  # Calcular TF para la consulta
-        query_tfidf = {}
-        document_magnitude = {}
-        scores = {}
-=======
         query_words = self.pre_processing(query)
->>>>>>> f5c1dc038a88d5bae9d026c8b682bc50425c9468:inverted_index.py
 
         term_freq = defaultdict(int)
         weights = defaultdict(float)
 
-<<<<<<< HEAD:Proyecto 2/inverted_index.py
-            idf = self.idf[term]
-            query_tfidf[term] = math.log10(1 + query_tf[term]) * idf  # Calcular TF-IDF de la consulta
-
-            # Buscar el término en los bloques (índice invertido)
-            term_data = self.search_in_blocks(term)
-            if term_data == -1:
-                continue  # Si no hay datos para el término, continuar con el siguiente término
-
-            # Calcular el puntaje de similitud para cada documento
-            for doc_id, freq in term_data.items():
-                doc_tfidf = math.log10(1 + freq) * idf  # TF-IDF del documento
-                scores[doc_id] = scores.get(doc_id, 0) + doc_tfidf * query_tfidf[term]  # Actualizar puntaje
-                document_magnitude[doc_id] = document_magnitude.get(doc_id,
-                                                                    0) + doc_tfidf ** 2  # Magnitud del documento
-
-        # Normalizar los puntajes utilizando las magnitudes de los vectores
-        query_magnitude = math.sqrt(sum(val ** 2 for val in query_tfidf.values()))  # Magnitud de la consulta
-        for doc_id in scores:
-            doc_vector_magnitude = math.sqrt(document_magnitude[doc_id])  # Magnitud del documento
-            # Normalizar el puntaje del documento
-            scores[doc_id] = scores[doc_id] / (query_magnitude * doc_vector_magnitude)
-
-        end_time = time.time()  # Medir el tiempo de finalización
-        print(f"Tiempo para procesar la consulta: {end_time - start_time:.2f} segundos.")
-
-        # Devolver los resultados ordenados por puntuación de mayor a menor, limitado a 'top_k'
-        return list(sorted(scores.items(), key=lambda x: x[1], reverse=True))[:top_k]
-=======
         for word in query_words:
             term_freq[word] += 1
 
@@ -280,7 +224,6 @@ class InvertedIndex:
             formatted_res.append(data)
         
         return formatted_res
->>>>>>> f5c1dc038a88d5bae9d026c8b682bc50425c9468:inverted_index.py
 
 if __name__ == "__main__":
     # Medir tiempo de construcción del índice
