@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from inverted_index import InvertedIndex
 from postgres_query import PostgresQuery
+from pydantic import BaseModel
 import regex as re
 import uvicorn
 
@@ -9,12 +10,16 @@ app = FastAPI()
 index = InvertedIndex('utils/dataset.csv')
 postgres = PostgresQuery()
 
+class QueryRequest(BaseModel):
+    query: str
+
 @app.post("/query")
-async def root(query: str):
-    if query == "":
+async def root(req: QueryRequest):
+    print(req.query)
+    if req.query == "":
         return []
 
-    return parseQuery(query)
+    return parseQuery(req.query)
 
 def parseQuery(query: str):
     q = [p.lower() for p in re.split("( |\\\".*?\\\"|'.*?')", query) if p.strip()]

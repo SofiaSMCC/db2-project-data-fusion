@@ -10,3 +10,7 @@
   font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
   color: #6196cc;
 }
+
+.bg-opacity-50 {
+  background-color: rgba(0, 0, 0, 0.3);
+}

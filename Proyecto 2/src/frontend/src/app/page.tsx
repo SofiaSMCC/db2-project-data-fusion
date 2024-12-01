@@ -9,10 +9,12 @@ import Notification from './components/Notification';
 
 export default function Home() {
   const [data, setData] = useState([]);
-  const [query, setQuery] = useState(`SELECT * WHERE lyrics @@ "yellow brick road" USING Spimi LIMIT 10 \n
-                                      SELECT * WHERE lyrics @@ "yellow brick road" USING PostgreSQL LIMIT 10`);
+  const [query, setQuery] = useState(`SELECT * WHERE lyrics @@ "In a haze, a stormy haze" USING Spimi LIMIT 10 \nSELECT * WHERE lyrics @@ "In a haze, a stormy haze" USING PostgreSQL LIMIT 10`);
   const [time, setTime] = useState<number | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
+  const [lyrics, setLyrics] = useState<any | null>(null);
+  const [showLyrics, setShowLyrics] = useState<boolean>(false);
+  const stopList = ["a", "an", "the", "and", "or", "but", "if", "then", "else", "when", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once"];
 
   const executeQuery = (queryToExecute: string | undefined) => {
     if (!queryToExecute) {
@@ -29,7 +31,7 @@ export default function Home() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        "query": queryToExecute.replace(/"/g, "\"")
+        "query": queryToExecute
       }),
     })
       .then((res) => res.json())
@@ -50,14 +52,71 @@ export default function Home() {
       });
   };
 
+  const showLyricsModal = (lyricsText: any) => {
+    setLyrics(lyricsText);
+    setShowLyrics(true);
+  };
+
+  const hideLyricsModal = () => {
+    setShowLyrics(false);
+    setLyrics(null);
+  };
+
   return (
-    <main className="flex flex-col max-w-7xl gap-3 p-20 mx-auto">
+    <main className={`flex flex-col max-w-7xl gap-3 p-20 mx-auto`}>
+      {showLyrics && (
+        <div
+          className="fixed inset-0 z-20 flex items-center justify-center bg-black bg-opacity-50"
+          onClick={hideLyricsModal}
+        >
+          <div
+            className="relative bg-white w-2/5 h-3/4 rounded-md p-3 overflow-auto shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 flex flex-col items-center gap-4 text-gray-800 whitespace-pre-wrap">
+              <h1 className='font-bold'>
+                {lyrics?.song} - {lyrics?.artist}
+              </h1>
+              <div className='flex flex-col text-sm items-center'>
+                {lyrics?.text.split('\n').map((line: string, index: number) => (
+                  <p key={index}>
+                    {line.split(' ').map((word, wordIndex) => {
+                      const highlightWords = query
+                        .replace(',', '')
+                        .replace(';', '')
+                        .replace('!', '')
+                        .replace('?', '')
+                        .split(' ').filter((queryWord) => !stopList.includes(queryWord) && queryWord.toLowerCase().trim());
+                      const isHighlighted = highlightWords.includes(word.toLowerCase().trim());
+
+                      return isHighlighted ? (
+                        <span key={wordIndex}>
+                          {isHighlighted ? (
+                            <span className="bg-yellow-300">{word}</span>
+                          ) : (
+                            word
+                          )}
+                          {" "}
+                        </span>
+                      ) : (
+                        <span key={wordIndex}>{word} </span>
+                      );
+                    })}
+                  </p>
+                ))}
+
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="flex flex-row justify-between w-full rounded-md p-3 border">
         <div className="flex gap-3">
-          <p>MyDB.db</p>
+          <p>Lyrics Finder</p>
         </div>
         <div className="flex">
-          <p>v1.0.0</p>
+          <p>v3.1.5</p>
         </div>
       </section>
 
@@ -95,7 +154,7 @@ export default function Home() {
         </section>
 
         <section className="flex flex-col border rounded-md p-3">
-          <Table data={data} time={time} />
+          <Table data={data} time={time} onLyricsClick={(lyricsText: any) => showLyricsModal(lyricsText)} />
         </section>
       </section>
 
