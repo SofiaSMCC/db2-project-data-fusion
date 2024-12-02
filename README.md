@@ -189,8 +189,6 @@ def query_search(self, query, top_k=5):
 
 Para realizar el experimento de realizar una búsqueda textual entre nuestro Índice Invertido y PostgreSQL, se utilizaron distintos tamaños del Dataset, como se visualiza en la siguiente tabla:
 
-ⓘ *Se forzó el uso del índice en PostgreSQL desactivando la opción `enable_seqscan`*
-
 |           | MyIndex        | PostgreSQL |
 |-----------| -------------- | ---------- |
 | N = 500   | 12.60 ms      | 48.56 ms  |
@@ -202,8 +200,25 @@ Para realizar el experimento de realizar una búsqueda textual entre nuestro Ín
 | N = 14000  | 262.90 ms      | 850.45 ms  |
 | N = 18000  | 373.70 ms      | 584.05 ms  |
 
-Para poder comparar los resultados, se realizó una gráfica a partir de los datos obtenidos:
+Para poder comparar los resultados, se realizó una gráfica a partir de los datos obtenidos que será analizada más adelante:
 
 <img src="graph_comparison.png" alt="drawing" width="800"/>
 
 ### Análisis de los resultados
+
+La búsqueda textual en PostgreSQL se realizó con el siguiente comando, donde `%s` se reemplaza por la query separada por el operador `| (OR)`.
+
+```sql
+SELECT track_id, track_name, track_artist, playlist_genre, lyrics, ts_rank(to_tsvector('english', lyrics), to_tsquery('english', %s)) AS score
+    FROM songs
+    WHERE to_tsvector('english', lyrics) @@ to_tsquery('english', %s)
+    ORDER BY score DESC
+    LIMIT 10;
+```
+
+A continuación se detallará el funcionamiento de cada función especial de PostgreSQL para la búsqueda textual:
+- `to_tsvector`: Esta función es equivalente a la función de pre-procesamiento de los documentos. Su propósito es normalizar las palabras eliminando StopWords, carácteres especiales y tokenizando las palabras para devolver finalmente un vector de tokens junto a la posición donde aparecen en el documento.
+- `to_tsquery`: Esta función normaliza y tokeniza una consulta textual, donde cada palabra está separado por un operador booleano `& (AND)`, `| (OR)` y `! (NOT)`.
+- `ts_rank`: Esta función calcula un puntaje de relevancia basado en la cantidad de coincidencias de la consulta (`to_tsquery('english', %s)`) con en el documento (`to_tsvector('english', lyrics)`).
+
+Analizando el gráfico del tiempo de ejecución, se puede observar que para todas las consultas el tiempo del índice implementado por nosotros fue menor al de PostgreSQL. Como se explica en la [documentación de PostgreSQL](https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING), el proceso de ranking es muy costoso debido a que debe consultar el tsvector de cada documento que coincida con la query, lo que vuelve el proceso más lento.

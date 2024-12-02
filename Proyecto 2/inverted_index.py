@@ -190,8 +190,9 @@ class InvertedIndex:
                     query_pow2_len += query_tf_idf ** 2
 
                     for doc_id, tf in postings.items():
-                        docs_pow2_lens[doc_id] += (math.log10(1 + tf) * idf) ** 2
-                        weights[doc_id] += query_tf_idf * math.log10(1 + tf) * idf
+                        doc_tf_idf = math.log10(1 + tf) * idf
+                        docs_pow2_lens[doc_id] += doc_tf_idf ** 2
+                        weights[doc_id] += query_tf_idf * doc_tf_idf
             
         for i in weights:
             if (query_pow2_len > 0 and weights[i] > 0):
