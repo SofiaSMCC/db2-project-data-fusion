@@ -38,7 +38,8 @@ def Run_KnnSequential(query_image_path='poke2/00000001.jpg', k=5):
     for dist, idx in knn_results:
         print(f"- {image_paths[idx]} (Distancia: {dist:.4f})")
 
-    return knn_results
+    return [(float(dist), image_paths[idx]) for dist, idx in knn_results]
+
 
 def Run_RangeSearch(query_image_path='poke2/00000001.jpg', radius=0.5):
 
@@ -75,7 +76,9 @@ def Run_RangeSearch(query_image_path='poke2/00000001.jpg', radius=0.5):
     for dist, idx in range_results:
         print(f"- {image_paths[idx]} (Distancia: {dist:.4f})")
 
-    return range_results
+    return [(float(dist), image_paths[idx]) for dist, idx in range_results]
+
+
 
 if __name__ == "__main__":
     Run_KnnSequential()

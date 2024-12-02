@@ -42,7 +42,8 @@ def Run_KnnRtree(query_image_path='poke2/00000001.jpg', k=5):
     for dist, result_id in knn_rtree_results:
         print(f"- {image_paths[result_id]} (Distancia: {dist:.4f})")
 
-    return knn_rtree_results
+    return [(float(dist), image_paths[result_id]) for dist, result_id in knn_rtree_results]
+
 
 if __name__ == "__main__":
     Run_KnnRtree()

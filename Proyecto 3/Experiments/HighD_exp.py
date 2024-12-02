@@ -41,7 +41,9 @@ def Run_KnnLSH(query_image_path='poke2/00000001.jpg', k=5):
     for dist, idx in zip(distances[0], indices[0]):
         print(f"- {image_paths[idx]} (Distancia: {dist:.4f})")
 
-    return knn_faiss
+    return [(float(dist), image_paths[idx]) for dist, idx in zip(distances[0], indices[0])]
+
+
 
 if __name__ == "__main__":
     Run_KnnLSH()
