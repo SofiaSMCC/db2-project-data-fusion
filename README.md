@@ -662,15 +662,18 @@ def Run_KnnLSH(query_image_path='poke2/00000001.jpg', k=5):
 
 ### Experimento
 
+Se utilizó una búsqueda por rango de radio = 10 y la búsqueda de los k = 5 vecinos más cercanos.
+
 |           | Rango Secuencial | KNN Secuencial | KNN RTree  | KNN HighD |
 |-----------|------------------|----------------|------------|-----------|
-| N = 500   | 1.0815 ms        | 1.9994 ms      | 1.2739 ms  | 0 ms      |
-| N = 1000  | 4.0681 ms        | 4.0588 ms      | 3.0615 ms  | 0 ms      |
-| N = 2000  | 8.0481 ms        | 8.1513 ms      | 5.0008 ms  | 0 ms      |
-| N = 5000  | 17.7212 ms       | 20.9551 ms     | 8.65638 ms | 0 ms      |
-| N = 10000 |                  |                |            |           |
-| N = 15000 |                  |                |            |           |
-| N = 20000 |                  |                |            |           |
+| N = 500   | 1.9956 ms        | 1.9996 ms      | 1.9937 ms  | 0 ms      |
+| N = 1000  | 4.9968 ms        | 2.9895 ms      | 3.0041 ms  | 0 ms      |
+| N = 2000  |8.5111 ms        | 7.509 ms      | 5.5215 ms  | 0 ms      |
+| N = 5000  | 20.9265 ms       | 20.0479 ms     | 14.0343 ms | 0 ms      |
+| N = 10000 |    38.7306 ms             |     43.0298 ms           |    25.0599 ms        |      1.0011 ms     |
+| N = 15000 |      54.538 ms            |    55.9967 ms            |   39.0227 ms         |           |
+| N = 20000 |      74.5986 ms            |     79.9944 ms           |   46.6983 ms         |     0 ms      |
+| N = 40000 |  146.89 ms                |    160.02 ms             |   105.57 ms         |    1.0002 ms       |
 
 
 ### Análisis de Resultados
