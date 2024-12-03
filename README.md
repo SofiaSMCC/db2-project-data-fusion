@@ -228,7 +228,7 @@ Analizando el gráfico del tiempo de ejecución, se puede observar que para toda
 > ## Proyecto 3: Indice Multidimensional
 
 ## Extracción de Características
-Este proyecto utiliza un modelo ResNet50 preentrenado para extraer vectores de características de imágenes.
+Este proyecto utiliza un modelo ResNet50 preentrenado para extraer vectores de características de imágenes. ResNet50 es un modelo preentrenado en el conjunto de datos ImageNet, que contiene millones de imágenes organizadas en miles de categorías. El proyecto utiliza las capas convolucionales de ResNet50 como un extractor de características genéricas. Esto significa que, en lugar de realizar clasificación directamente, se toma la salida de la penúltima capa (antes de la capa de clasificación final) como un vector de características de alta dimensión.
 
 ### 1. Configuración
 - **Carga del Modelo ResNet50:**
