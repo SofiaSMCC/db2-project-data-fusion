@@ -427,7 +427,148 @@ def Run_RangeSearch(query_image_path='poke2/00000001.jpg', radius=0.5):
 
 ### Implementación
 
-### Consulta
+#### **1. Inicialización**
+
+```python
+class KnnRTree:
+    def __init__(self, dimension=100):
+        p = index.Property()
+        p.dimension = dimension
+        self.idx = index.Index(properties=p)
+        self.data = {}
+```
+
+
+1. Define las propiedades del R-tree con la clase `index.Property`, especificando el número de dimensiones (por defecto, 100).
+2. Crea una instancia del árbol R-tree (`self.idx`) utilizando las propiedades definidas.
+3. Inicializa un diccionario vacío (`self.data`) para almacenar los vectores de características y sus IDs.
+
+#### **2. Inserción de Características**
+
+```python
+def insert(self, features):
+    for idx, vector in enumerate(features):
+        vector = [float(coord) for coord in vector]
+        unique_id = idx
+        bbox = tuple(vector) + tuple(vector)
+        self.idx.insert(unique_id, bbox)
+        self.data[unique_id] = vector
+```
+
+
+1. Itera sobre los vectores de características, asignando un ID único a cada uno.
+2. Convierte los valores del vector a flotantes para garantizar compatibilidad.
+3. Construye un "bounding box" como un par `(mínimo, máximo)` para cada vector.
+4. Inserta el bounding box en el árbol R-tree con el ID único.
+5. Guarda el vector en el diccionario `self.data` asociado a su ID.
+
+#### **3. Inserción en Lotes**
+
+```python
+def insert_in_batches(self, features, batch_size=50):
+    for i in range(0, len(features), batch_size):
+        batch = features[i:i + batch_size]
+        for idx, vector in enumerate(batch):
+            vector = [float(coord) for coord in vector]
+            unique_id = i + idx
+            bbox = tuple(vector) + tuple(vector)
+            self.idx.insert(unique_id, bbox)
+            self.data[unique_id] = vector
+```
+
+1. Divide las características en lotes de tamaño `batch_size`.
+2. Para cada lote, recorre los vectores y les asigna un ID basado en su posición en el lote.
+3. Convierte los valores de los vectores a flotantes.
+4. Construye un bounding box para cada vector y lo inserta en el R-tree con su ID único.
+5. Almacena los vectores en el diccionario `self.data` con sus respectivos IDs.
+
+#### **4. Búsqueda KNN**
+
+```python
+def knn_search(self, query_vector, k):
+    bbox_query = tuple(query_vector) + tuple(query_vector)
+    nearest = list(self.idx.nearest(bbox_query, k, objects=True))
+    top_k = []
+    for item in nearest:
+        current_vector = self.data[item.id]
+        distance = np.linalg.norm(np.array(current_vector) - np.array(query_vector))
+        top_k.append((distance, item.id))
+    top_k.sort(key=lambda x: x[0])
+    return top_k[:k]
+```
+
+
+1. Construye un bounding box para el vector de consulta.
+2. Busca los `k` elementos más cercanos en el árbol utilizando la consulta.
+3. Recupera los vectores correspondientes a los IDs encontrados.
+4. Calcula la distancia euclidiana entre la consulta y cada vector recuperado.
+5. Ordena los resultados por distancia y devuelve los `k` vectores más cercanos junto con sus distancias.
+
+---
+
+### **Consulta**
+
+#### **1. Carga del modelo y transformaciones**
+
+```python
+feature_extractor = load_resnet_feature_extractor()
+transform = get_transform()
+```
+
+1. Carga el modelo ResNet50 preentrenado y lo configura como extractor de características.
+2. Define las transformaciones necesarias para ajustar las imágenes al formato requerido por ResNet50.
+
+#### **2. Carga o extracción de características**
+
+```python
+if os.path.exists(feature_file):
+    data_features, image_paths = load_features(feature_file)
+else:
+    image_paths, data_features = extract_features_from_folder(folder_path, feature_extractor, transform)
+    save_features(feature_file, data_features, image_paths)
+```
+
+1. Verifica si ya existe un archivo con las características extraídas previamente.
+2. Si existe, carga las características y las rutas de las imágenes desde el archivo.
+3. Si no existe, recorre la carpeta de imágenes para extraer las características utilizando el modelo ResNet50.
+4. Guarda las características extraídas en un archivo para evitar recalcularlas en el futuro.
+
+#### **3. Reducción dimensional**
+
+```python
+if len(data_features) > 1:
+    pca = PCA(n_components=min(100, len(data_features[0])))
+    data_features_reduced, pca_model = reduce_dimensions(data_features, n_components=pca.n_components)
+    query_feature_reduced = reduce_single_feature(query_feature, pca_model)
+```
+
+1. Aplica PCA (Análisis de Componentes Principales) si hay suficientes datos para reducir la cantidad de dimensiones.
+2. Ajusta las características de las imágenes y la consulta al nuevo espacio dimensional.
+
+#### **4. Inserción y búsqueda KNN**
+
+```python
+rtree = KnnRTree()
+rtree.insert_in_batches(data_features_reduced, batch_size=25)
+knn_rtree_results = rtree.knn_search(query_feature_reduced, k)
+```
+
+1. Inicializa la estructura R-tree con las dimensiones reducidas.
+2. Inserta las características de las imágenes en el R-tree en lotes.
+3. Realiza la búsqueda KNN utilizando el vector de consulta.
+
+#### **5. Resultados**
+
+```plaintext
+Imágenes más similares con R-Tree:
+- poke2/00000002.jpg (Distancia: 0.0453)
+- poke2/00000010.jpg (Distancia: 0.0521)
+- poke2/00000015.jpg (Distancia: 0.0628)
+```
+
+---
+
+
 
 ## Análisis de la Maldición de Dimensionalidad
 
