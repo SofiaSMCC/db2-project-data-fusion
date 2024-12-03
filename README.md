@@ -228,6 +228,57 @@ Analizando el gráfico del tiempo de ejecución, se puede observar que para toda
 > ## Proyecto 3: Indice Multidimensional
 
 ## Extracción de Características
+Este proyecto utiliza un modelo ResNet50 preentrenado para extraer vectores de características de imágenes.
+
+### 1. Configuración
+- **Carga del Modelo ResNet50:**
+  - Se utiliza un modelo ResNet50 preentrenado como extractor de características. El modelo se ajusta para eliminar la capa final (clasificadora), conservando solo las capas convolucionales que generan los vectores de características.
+
+  ```python
+  def load_resnet_feature_extractor():
+      resnet50 = models.resnet50(pretrained=True).eval()
+      feature_extractor = torch.nn.Sequential(*list(resnet50.children())[:-1])
+      return feature_extractor
+  ```
+
+- **Transformaciones de las Imágenes:**
+  - Se define un conjunto de transformaciones para preprocesar las imágenes antes de pasarlas por el modelo.
+    - Redimensionar a 224x224 (dimensiones requeridas por ResNet50).
+    - Normalizar los valores de píxeles utilizando los valores promedio y desviación estándar del conjunto ImageNet.
+
+  ```python
+  def get_transform():
+      return transforms.Compose([
+          transforms.Resize((224, 224)),
+          transforms.ToTensor(),
+          transforms.Normalize(
+              mean=[0.485, 0.456, 0.406],
+              std=[0.229, 0.224, 0.225]
+          )
+      ])
+  ```
+
+  ### 2. Extracción de Características
+
+  - Se recorre una carpeta con imágenes y se aplica el proceso de extracción a cada archivo.
+
+  ```python
+  def extract_features_from_folder(folder_path, feature_extractor, transform):
+      image_paths = [os.path.join(folder_path, filename) for filename in os.listdir(folder_path) if filename.endswith(('.jpg', '.jpeg', '.png'))]
+      features = [extract_features(image_path, feature_extractor, transform) for image_path in image_paths]
+      return image_paths, features
+  ```
+- **Para cada imagen dentro de la carpeta:**
+  - Se abre la imagen, se aplica la transformación definida y se extrae su vector de características utilizando el modelo ResNet50.
+
+  ```python
+  def extract_features(image_path, feature_extractor, transform):
+      image = Image.open(image_path).convert('RGB')
+      input_tensor = transform(image).unsqueeze(0)
+      with torch.no_grad():
+          features = feature_extractor(input_tensor)
+      return features.squeeze().numpy()
+  ```
 
 ## KNN Sequencial
 
