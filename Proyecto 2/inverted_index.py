@@ -50,7 +50,6 @@ class InvertedIndex:
         block_count = 0
         dictionary = defaultdict(dict)
 
-        # Usar paralelización para distribuir el procesamiento de documentos
         for i, (doc_id, words) in enumerate(self.dataset.items()):
             for word in words:
                 if word not in dictionary:
