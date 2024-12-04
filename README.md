@@ -677,6 +677,7 @@ Se utilizó una búsqueda por rango de radio = 10 y la búsqueda de los k = 8 ve
 
 
 ### Análisis de Resultados
+![image](https://github.com/user-attachments/assets/3de054eb-5f73-410e-b6bb-e43118c47a0a)
 
 ## Integrantes
 
