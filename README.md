@@ -677,8 +677,9 @@ Se utilizó una búsqueda por rango de radio = 10 y la búsqueda de los k = 8 ve
 
 
 ### Análisis de Resultados
-![image](https://github.com/user-attachments/assets/2727d042-e344-4109-9dba-62250d13f0c3)
+![image](https://github.com/user-attachments/assets/cf4e2aa5-054b-47eb-968a-c2b48d0fb0a0)
 
+Se observa que KNN HighD tiene un desempeño consistente con tiempos bajos y estables, independientemente del tamaño de los datos. En contraste, KNN Rtree presenta un crecimiento lineal moderado en el tiempo de búsqueda, mientras que KNN secuencial y Rango Secuencial muestran un crecimiento más pronunciado a medida que aumenta el tamaño del conjunto de datos, con KNN secuencial siendo el más lento en volúmenes grandes. 
 ## Integrantes
 
 |                              **Luciano Aguirre**                               |                                           **Abigail**                                           |                                         **Adrian**                                          |                                      **Jose**                                      |                           **Sofia Salazar**                            |
